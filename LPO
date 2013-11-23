@@ -1,0 +1,10 @@
+#!/usr/bin/perl -w
+
+use v5.10;
+
+open(INPUT, "<", $ARGV[0]) or die "Impossible to open $ARGV[0]\n";
+my $line = <INPUT>;
+close(INPUT);
+my @valores = split(" ",$linha);
+say $valores[0];
+say $valores[1];
