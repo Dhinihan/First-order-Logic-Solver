@@ -2,9 +2,37 @@
 
 use v5.10;
 
-open(INPUT, "<", $ARGV[0]) or die "Impossible to open $ARGV[0]\n";
-my $line = <INPUT>;
+die "I need a file\n" if @ARGV == 0;
+open(INPUT, "<", $ARGV[0]) or die "Impossible to open \"$ARGV[0]\"\n";
+
+$d = 1 if @ARGV > 1 && $ARGV[1] eq "-d";
+
+while ($line = <INPUT>)
+{
+    $in .= $line;
+}
 close(INPUT);
-my @valores = split(" ",$linha);
-say $valores[0];
-say $valores[1];
+
+@entries = split("\n",$in);
+
+say "\n----------------DEBBUGER----------------";
+say "\nInput:";
+$, = "\n";
+say @entries if $d;
+
+$, = "\n";
+
+say "\nReading file:";
+while ($i = shift @entries)
+{
+    if ($i =~ m/([A-Z]+)\s*:\s*(\d)+\s+(\d)+/)
+    {
+        say $1 . " = {" . $2 . " ... " . $3 . "}" if $d;
+        @aux =($2, $3);
+        $vars{$1} = \@aux;
+    }
+    if (@matches = $i =~ m/^([-]?[a-z]+[(]([A-Z]+)\s*(,\s*[A-Z]+)*[)])+\s*.([A-Z] [])?/g)
+    {
+        
+    }
+}
