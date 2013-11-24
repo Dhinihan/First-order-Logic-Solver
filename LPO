@@ -1,9 +1,16 @@
 #!/usr/bin/perl -w
 
+use warnings;
+use strict;
 use v5.10;
 
 die "I need a file\n" if @ARGV == 0;
 open(INPUT, "<", $ARGV[0]) or die "Impossible to open \"$ARGV[0]\"\n";
+
+my $d;
+my $line;
+my $in;
+my @entries;
 
 $d = 1 if @ARGV > 1 && $ARGV[1] eq "-d";
 
@@ -15,24 +22,122 @@ close(INPUT);
 
 @entries = split("\n",$in);
 
-say "\n----------------DEBBUGER----------------";
-say "\nInput:";
+say "\n----------------DEBBUGER----------------" if $d;
+say "\nINPUT:\n" if $d;
 $, = "\n";
 say @entries if $d;
 
-$, = "\n";
+$, = ", ";
 
-say "\nReading file:";
-while ($i = shift @entries)
+say "\nREADING FILE:\n" if $d;
+
+my %vars;
+my $aux; 
+my @preds;
+my @pred;
+my @conds;
+
+while (my $i = shift @entries)
 {
     if ($i =~ m/([A-Z]+)\s*:\s*(\d)+\s+(\d)+/)
     {
         say $1 . " = {" . $2 . " ... " . $3 . "}" if $d;
-        @aux =($2, $3);
-        $vars{$1} = \@aux;
+        $vars{$1} = [$2, $3];
     }
-    if (@matches = $i =~ m/^([-]?[a-z]+[(]([A-Z]+)\s*(,\s*[A-Z]+)*[)])+\s*.([A-Z] [])?/g)
+    
+    if ($i =~ 
+           m/
+                (
+                    [-]?[a-z]+      # Name of the predicative
+
+                    [(]
+                    ([A-Z]+)\s*     # First parameter
+                    (,\s*[A-Z]+)*   # Others parameters
+                    [)]
+                )+                  # One or more predicatives
+                
+                \s*[.]\s*           # End Of Predicatives
+                
+                (                   # Conditions
+                    (
+                        [A-Z]+\s*       # First Variable 
+                        (
+                            # Operation applied to the first variable
+                            [+-]\s*     
+                            (
+                                #   Variable witch is summed or subtracted 
+                                # from the expression
+                                [A-Z]+
+                                
+                                |
+                                
+                                #   Number witch is summed or subtracted 
+                                # from the expression
+                                \d+
+                                
+                            )\s*
+                        )*
+                                            
+                        ([=<>]|!=)\s*   # Comparison applied
+                        
+                        [A-Z]+\s*       # Second Variable 
+                        (
+                            # Operation applied to the second variable
+                            [+-]\s*     
+                            (
+                                #   Variable witch is summed or subtracted 
+                                # from the expression
+                                [A-Z]+
+                                
+                                |
+                                
+                                #   Number witch is summed or subtracted 
+                                # from the expression
+                                \d+
+                                
+                            )\s*
+                        )*
+                    )+                    
+                    [.]
+                )?$
+            /x
+        )
     {
+        @preds = $i =~ m/([-]?\w+[(][A-Z,\s]+[)])/g;
+        $i =~ s/([-]?\w+[(][A-Z,\s]+[)])\s*//g;
+        say "\nclausule:" if $d;
+        print "    " if $d;
+        say @preds if $d;
+        say "conditions: " if $d;
         
+        while ($i =~ s/
+                        ([A-Z]+|\d+)     # First term of the condition
+                        (
+                            \s*
+                            [+-]         # Operation applied to the term
+                            \s*
+                            ([A-Z]+|\d+) # Operator applied to the term
+                        )*               # Any number of operations
+                        \s*
+                        [=<>!]+          # Comparison Operator
+                        \s*
+                        ([A-Z]+|\d+)     # Second term of the condition
+                        (
+                            \s*
+                            [+-]         # Operation applied to the term
+                            \s*
+                            ([A-Z]+|\d+) # Operator applied to the term
+                        )*               # Any number of operations
+                    //x)
+        {
+            print "    " if $d;
+            say $& if $d;
+            push(@conds, $&);
+        }
+        while ($i = shift @preds)
+        {
+            $aux = [$i =~ m/([A-Z]+|[a-z]+)/g];
+            push(@pred, $aux);
+        }
     }
 }
