@@ -1,0 +1,7 @@
+X: 1 5.
+Y: 1 5.
+foo(X).
+bar(Y) -foo(X). X < Y.
+X: 2 7.
+Y: 2 7.
+foo(X,Y). X = Y X > 3.
