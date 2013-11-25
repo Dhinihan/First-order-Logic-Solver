@@ -8,22 +8,29 @@ use v5.10;
 die "I need a file!
     use: ./LPO <-d> <-cnf> FILE" if @ARGV == 0;
 
+my $aux;
 # Try to open the file in the last argument
-open(INPUT, "<", $ARGV[-1]) or die "Impossible to open \"$ARGV[-1]\"
-use: ./LPO <-d> <-cnf> FILE\n";
+open(INPUT, "<", $aux = shift @ARGV) or die "Impossible to open \"$aux\"
+use: ./LPO FILE [-d|--debug] [-c|--cnf]\n";
 
 my $d;          # Debugger Option
 my $lines;      # Line catcher of the INPUT
 my @entries;    # Array with the lines
 
+use Getopt::Long;
+my $help = undef; 
+my $show_robot = undef;
+GetOptions("debug" => \$d,
+);
+
 # Catching Options
-foreach(@ARGV)
-{
-    when("-d")  #Debugger Option
-    {
-        $d = 1;    
-    }
-}
+#foreach(@ARGV)
+#{
+ #   when("-d")  #Debugger Option
+  #  {
+   #     $d = 1;    
+    #}
+#}
 
 # Puting the INPUT in @entries
 while ($lines = <INPUT>)
@@ -131,10 +138,13 @@ while ($i = shift @entries)
             # Die if the variable wasn't declared
             die "Variable $1 wasn't declared" unless defined $vars{$1}; 
             # The recursive function
-            insert($claus,      # String with the clause 
-                   $1,          # Name of one of the variables
-                   {%vars},     # Reference to the variable hash
-                   [@conds]);   # Reference to the array of conditions    
+            insert(
+                    $claus,   # String with the clause 
+                    $1,       # Name of one of the variables
+                    {%vars},  # Reference to the variable hash
+                    [@conds]  # Reference to the array of conditions
+                  );
+            say "" if $d;       
         }
         #die if the actual line is either not a clause nor a declaration
         else{die "error";}
@@ -171,6 +181,7 @@ sub insert
             # Change the variable to its actual value
             $aux =~ s/$var/$i/g;
             
+            # Call insert if still variables to cumpute
             if($aux =~ m/([A-Z]+)/)
             {
                 insert($aux, $1, $vHash, $checks);
@@ -178,8 +189,8 @@ sub insert
             else 
             {
                 print "to file -> " if $d;
-                $aux =~ s/\s*$/./;
-                say $aux;
+                $aux =~ s/\s*$/./; # The dot after the clause
+                say $aux; # Put the computed clause
             }
         }   
     }
