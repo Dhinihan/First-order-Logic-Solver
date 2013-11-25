@@ -4,50 +4,57 @@ use warnings;
 use strict;
 use v5.10;
 
-die "I need a file\n" if @ARGV == 0;
-open(INPUT, "<", $ARGV[0]) or die "Impossible to open \"$ARGV[0]\"\n";
+#Die if there is no arguments
+die "I need a file!
+    use: ./LPO <-d> <-cnf> FILE" if @ARGV == 0;
 
-my $d;
-my $line;
-my $in;
-my @entries;
+# Try to open the file in the last argument
+open(INPUT, "<", $ARGV[-1]) or die "Impossible to open \"$ARGV[-1]\"
+use: ./LPO <-d> <-cnf> FILE\n";
 
-$d = 1 if @ARGV > 1 && $ARGV[1] eq "-d";
+my $d;          # Debugger Option
+my $lines;      # Line catcher of the INPUT
+my @entries;    # Array with the lines
 
-while ($line = <INPUT>)
+# Catching Options
+foreach(@ARGV)
 {
-    $in .= $line;
+    when("-d")  #Debugger Option
+    {
+        $d = 1;    
+    }
 }
-close(INPUT);
 
-@entries = split("\n",$in);
+# Puting the INPUT in @entries
+while ($lines = <INPUT>)
+{push (@entries, $lines);}
+
+close(INPUT);
 
 say "\n----------------DEBBUGER----------------" if $d;
 say "\nINPUT:\n" if $d;
-$, = "\n";
-say @entries if $d;
 
-$, = ", ";
+say @entries if $d;
 
 say "\nREADING FILE:\n" if $d;
 
-my %vars;
-my $aux; 
-my $claus;
-my $var;
-my @pred;
-my @conds;
+my %vars;       # Hash with the information of the variables
+my $claus;      # String with the clause
+my @conds;      # Array with the conditions for the last clause
+my $i;          # Actual line of the INPUT
 
-while (my $i = shift @entries)
+# Processing loop
+while ($i = shift @entries)
 {
+    # Check if the actual line is a variable declaration
     if ($i =~ m/([A-Z]+)\s*:\s*(\d+)\s+(\d+)/)
     {
         say $1 . " = {" . $2 . " ... " . $3 . "}" if $d;
-        $vars{$1} = [$2, $3, "x"];
+        $vars{$1} = [$2, $3, "x"]; #The 'x' is a indicator used after
     }
-    
     else 
     {   
+        # Check if the actual line is a clause
         if ($i =~ 
            m/
                 (
@@ -81,8 +88,8 @@ while (my $i = shift @entries)
                 )?$
             /x
         )
-        {
-            $claus = "";
+        {   
+            # Catching the clauses
             while ($i =~ s/([-]?\w+[(][A-Z,\s]+[)])\s*//)
             {
                 $claus .= $1 . " ";
@@ -90,8 +97,9 @@ while (my $i = shift @entries)
             say "\nclausule:" if $d;
             print "    " if $d;
             say $claus if $d;
-            say "conditions: " if $d;
             
+            #Catching the conditions
+            say "conditions: " if $d;
             while ($i =~ s/
                             ([A-Z]+|\d+)     # First term of the condition
                             (
@@ -116,37 +124,56 @@ while (my $i = shift @entries)
                 say $& if $d;
                 push(@conds, $&);
             }
-            $claus =~ m/([A-Z]+)/;
+            
+            # Here we start to recursively print
             say "\nPRINTING:\n" if $d;
+            $claus =~ m/([A-Z]+)/; # Catch the first variable 
+            # Die if the variable wasn't declared
             die "Variable $1 wasn't declared" unless defined $vars{$1}; 
-            insert($claus, $1, $vars{$1}[0], $vars{$1}[1], {%vars}, [@conds]);
-            $aux = '$vars{$1}[0] - $vars{$1}[1]';
+            # The recursive function
+            insert($claus,      # String with the clause 
+                   $1,          # Name of one of the variables
+                   {%vars},     # Reference to the variable hash
+                   [@conds]);   # Reference to the array of conditions    
         }
+        #die if the actual line is either not a clause nor a declaration
         else{die "error";}
     }
+    #empty the conditions and the clause
     @conds = ();
+    $claus = "";
 }
 
+# Recursive function to print the clauses
 sub insert
 {
-    my $clause = shift;
-    my $var    = shift;
-    my $min    = shift;
-    my $max    = shift;
-    my $vHash  = shift;
-    my $checks = shift;
-    my $aux;
-    die "Variable $var wasn't declared" unless defined $$vHash{$var};
+    my $clause = shift;     # The clauses with some variable
+    my $var    = shift;     # A variable in the clause
+    my $vHash  = shift;     # A Hash reference with all the variables
+    my $checks = shift;     # A Array reference with the conditions
+    my $min    = $$vHash{$var}->[0]; # Least value of the $var domain
+    my $max    = $$vHash{$var}->[1]; # Greater value of the $var domain
+    my $aux;                # Auxiliar variable
+    
+    #die if the variable was not declared
+    die "Variable $var wasn't declared" unless defined $vHash->{$var};
+    
+    # Printing the clauses
     for(my $i = $min; $i <= $max; $i++)
     {
-        $$vHash{$var}[2] = $i;
+        $$vHash{$var}[2] = $i; #Store the actual value of the variable
+        
+        # Check if matches the conditions 
+        # or if there is no enough information
         if(chkConditions($vHash, $checks))
-        {
+        {   
             $aux = $clause;
+            # Change the variable to its actual value
             $aux =~ s/$var/$i/g;
+            
             if($aux =~ m/([A-Z]+)/)
             {
-                insert($aux, $1, $vars{$1}[0], $vars{$1}[1], $vHash, $checks);
+                insert($aux, $1, $vHash, $checks);
             }
             else 
             {
