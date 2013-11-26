@@ -3,34 +3,26 @@
 use warnings;
 use strict;
 use v5.10;
+use Getopt::Long;
 
 #Die if there is no arguments
 die "I need a file!
-    use: ./LPO <-d> <-cnf> FILE" if @ARGV == 0;
+    usage: ./LPO FILE [-d|--debug] [-c|--cnf]\n" if @ARGV == 0;
 
 my $aux;
 # Try to open the file in the last argument
 open(INPUT, "<", $aux = shift @ARGV) or die "Impossible to open \"$aux\"
-use: ./LPO FILE [-d|--debug] [-c|--cnf]\n";
+    usage: ./LPO FILE [-d|--debug] [-c|--cnf]\n";
 
 my $d;          # Debugger Option
 my $lines;      # Line catcher of the INPUT
 my @entries;    # Array with the lines
 
-use Getopt::Long;
+
 my $help = undef; 
 my $show_robot = undef;
 GetOptions("debug" => \$d,
 );
-
-# Catching Options
-#foreach(@ARGV)
-#{
- #   when("-d")  #Debugger Option
-  #  {
-   #     $d = 1;    
-    #}
-#}
 
 # Puting the INPUT in @entries
 while ($lines = <INPUT>)
@@ -45,14 +37,16 @@ say @entries if $d;
 
 say "\nREADING FILE:\n" if $d;
 
-my %vars;       # Hash with the information of the variables
-my $claus;      # String with the clause
-my @conds;      # Array with the conditions for the last clause
-my $i;          # Actual line of the INPUT
+my %vars;           # Hash with the information of the variables
+my $claus;          # String with the clause
+my @conds;          # Array with the conditions for the last clause
+my $i;              # Actual line of the INPUT
+my $counter = 0;    # line counter 
 
 # Processing loop
 while ($i = shift @entries)
 {
+    $counter++;
     # Check if the actual line is a variable declaration
     if ($i =~ m/([A-Z]+)\s*:\s*(\d+)\s+(\d+)/)
     {
@@ -130,6 +124,14 @@ while ($i = shift @entries)
                 print "    " if $d;
                 say $& if $d;
                 push(@conds, $&);
+                
+                #Checking if all Variables in conditions are in the clause
+                $aux = $conds[-1];
+                while($aux =~ s/([A-Z]+)//)
+                {   
+                    die "Fatal error: $1 is not in the clause in line $counter\n"
+                        unless ($claus =~ m/$1/);
+                } 
             }
             
             # Here we start to recursively print
@@ -147,7 +149,11 @@ while ($i = shift @entries)
             say "" if $d;       
         }
         #die if the actual line is either not a clause nor a declaration
-        else{die "error";}
+        else
+        {
+            die "Error in line $counter: it is neither a declaration nor a clause\n"
+                unless $i =~ m/^[\s]*$/;
+        }
     }
     #empty the conditions and the clause
     @conds = ();
@@ -194,63 +200,79 @@ sub insert
             }
         }   
     }
+    #clean the slot with the actual value of the variable
     $$vHash{$var}[2] = 'x';
 }
 
+# Pre-processing for sub chk 
 sub chkConditions
 {
-    my $vHash  = shift;
-    my $checks = shift;
+    my $vHash  = shift;     # Hash reference with the variables info
+    my $checks = shift;     # Array reference with the conditions
+    
     foreach(@$checks)
     {
-        when(/(.*)!=(.*)/)
+        when(/(.*)!=(.*)/)  # When it is the different condition
         {
-            return 0 if(!chk($1, $2, $vHash, $checks, "!"));
+            return 0 if(!chk($1, $2, $vHash, "!"));
         }
-        when(/(.*)<(.*)/)
+        when(/(.*)<(.*)/)   # When it is the less condition
         {
-            return 0 if(!chk($1, $2, $vHash, $checks, "<"));
+            return 0 if(!chk($1, $2, $vHash, "<"));
         }
-        when(/(.*)>(.*)/)
+        when(/(.*)>(.*)/)   # When it is the greater condition
         {
-            return 0 if(!chk($1, $2, $vHash, $checks, ">"));
+            return 0 if(!chk($1, $2, $vHash, ">"));
         }
-        when(/(.*)=(.*)/)
+        when(/(.*)=(.*)/)   # When it is the equal condition
         {
-            return 0 if(!chk($1, $2, $vHash, $checks, "="));
+            return 0 if(!chk($1, $2, $vHash, "="));
         }
     }
+    # If matches the condition, return true     
     return 1;
 }
 
+# Check if the condition holds
 sub chk
 {
-    my $left   = shift;
-    my $right  = shift;
-    my $vHash  = shift;
-    my $checks = shift;
-    my $op     = shift;
-    my $first = 0;
-    my $second = 0;
-    my $plus = 1;
+    my $left   = shift; # The left expression of the condition
+    my $right  = shift; # The right expression of the condition
+    my $vHash  = shift; # Hash with the variables info
+    my $op     = shift; # String with the condition operator
+    my $first = 0;      # Variable to hold the first term
+    my $second = 0;     # Variable to hold the second term
+    
+    # Number witch holds if it is a minus or a plus operation
+    my $plus = 1;        
+    
+    # Calculate the left expression
     while($left =~ s/([A-Z]+|\d+)//)
     {
         if(defined $$vHash{$1})
         {
+            #if there is no enough information returns true
             return 1 if $$vHash{$1}[2] eq 'x';
+            #sums the variable value into the expression
             $first += $$vHash{$1}[2]*$plus;
         }
         else
         {
+            # It must be a number to sum into the expression
+            # because it is not in hash
             $first += $1*$plus;
         }
+        # After compute the first number, check if there is another term
         if($left =~ s/([+-])//)
         {
             $plus = +1 if $1 eq '+';
             $plus = -1 if $1 eq '-';
         }
     }
+    
     $plus = 1;
+    
+    # Calculate the right expression (Analogue to the left)
     while($right =~ s/([A-Z]+|\d+)//)
     {
         if(defined $$vHash{$1})
@@ -268,6 +290,8 @@ sub chk
             $plus = -1 if $1 eq '-';
         }
     }
+    
+    # Do the actual check
     given($op)
     {
         when("=")
@@ -287,5 +311,4 @@ sub chk
             return $first != $second;
         }
     }
-    return 0;
 }
