@@ -5,24 +5,30 @@ use strict;
 use v5.10;
 use Getopt::Long;
 
-#Die if there is no arguments
-die "I need a file!
-    usage: ./LPO FILE [-d|--debug] [-c|--cnf]\n" if @ARGV == 0;
-
-my $aux;
-# Try to open the file in the last argument
-open(INPUT, "<", $aux = shift @ARGV) or die "Impossible to open \"$aux\"
-    usage: ./LPO FILE [-d|--debug] [-c|--cnf]\n";
-
+my $aux;        # Auxiliar variable
 my $d;          # Debugger Option
 my $lines;      # Line catcher of the INPUT
 my @entries;    # Array with the lines
+my $file;
+my $usage;
 
+$usage = "\n    usage: ./LPO INPUT_FILE [-d|--debug] [-c|--cnf] [-o|--output = OUTPUT_FILE]\n";
 
-my $help = undef; 
-my $show_robot = undef;
-GetOptions("debug" => \$d,
+#Die if there is no arguments
+die "I need a file!$usage" if @ARGV == 0;
+
+open(INPUT, "<", $aux = shift @ARGV) or die "Impossible to open \"$aux\"$usage";
+GetOptions("debug"    => \$d,
+           "output=s" => \$file
 );
+
+unless($d)
+{ 
+    $file = "output.txt" unless $file;
+    open(OUT, '>', $file);
+    say "The output is in the file \"$file\"";
+    select OUT;
+}
 
 # Puting the INPUT in @entries
 while ($lines = <INPUT>)
