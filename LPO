@@ -27,7 +27,8 @@ GetOptions("debug"    => \$d,
 
 unless($d)
 { 
-    $file = "output.txt" unless $file;
+    $file = "output.txt" unless $file || $cnf;
+    $file = "output.cnf" unless $file || !$cnf;
     open(OUT, '>', $file);
     say "The output is in the file \"$file\"";
     select OUT;
@@ -51,7 +52,10 @@ my %preds;          # Hash with the predicatives variations
 my $claus;          # String with the clause
 my @conds;          # Array with the conditions for the last clause
 my $i;              # Actual line of the INPUT
-my $counter = 0;    # line counter 
+my $counter = 0;    # line counter
+
+#initializes the cnf counter
+$preds{"COUNTER"} = 1;
 
 # Processing loop
 while ($i = shift @entries)
@@ -153,9 +157,9 @@ while ($i = shift @entries)
             insert(
                     $claus,   # String with the clause 
                     $1,       # Name of one of the variables
-                    {%vars},  # Reference to the variable hash
-                    [@conds], # Reference to the array of conditions
-                    {%preds}  # Reference to the predicatives hash 
+                    \%vars,  # Reference to the variable hash
+                    \@conds, # Reference to the array of conditions
+                    \%preds  # Reference to the predicatives hash 
                   );
             say "" if $d;       
         }
@@ -179,7 +183,7 @@ sub insert
     my $vHash  = shift;     # A Hash reference with all the variables
     my $checks = shift;     # A Array reference with the conditions
     # A Hash reference with all the predicatives so far
-    my $preds  = shift;     
+    my $preds  = shift;
     my $min    = $$vHash{$var}->[0]; # Least value of the $var domain
     my $max    = $$vHash{$var}->[1]; # Greater value of the $var domain
     my $aux;                # Auxiliar variable
@@ -203,7 +207,7 @@ sub insert
             # Call insert if still variables to cumpute
             if($aux =~ m/([A-Z]+)/)
             {
-                insert($aux, $1, $vHash, $checks);
+                insert($aux, $1, $vHash, $checks, $preds);
             }
             else 
             {
@@ -332,9 +336,18 @@ sub cnf
 {
     my $clause = shift;
     my $preds  = shift;
-    while($clause =~ s/([+-]?[a-z]+[(].*[)])//)
+    my $i      = $preds->{"COUNTER"};
+    my $atom;
+    my $sign = "";
+    while($clause =~ s/([-]?[a-z]+[(][\d,\s]*[)])//)
     {
-        print "$1 ";
+        $atom = $1;
+        $sign = "-" if ($atom =~ s/-//);
+        $$preds{$atom} = $i++ unless defined $$preds{$atom};
+        print $sign . $$preds{$atom} . " " unless $d;
+        print $atom . "[" . $sign . $$preds{$atom} . "] " if $d;
+        $sign = "";
     }
-    say ".";
+    say "0";
+    $preds->{"COUNTER"} = $i;
 }
