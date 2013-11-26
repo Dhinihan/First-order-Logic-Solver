@@ -7,10 +7,11 @@ use Getopt::Long;
 
 my $aux;        # Auxiliar variable
 my $d;          # Debugger Option
+my $cnf;        # CNF option
 my $lines;      # Line catcher of the INPUT
 my @entries;    # Array with the lines
-my $file;
-my $usage;
+my $file;       # string with the output file
+my $usage;      # string with the usage of the program
 
 $usage = "\n    usage: ./LPO INPUT_FILE [-d|--debug] [-c|--cnf] [-o|--output = OUTPUT_FILE]\n";
 
@@ -18,7 +19,9 @@ $usage = "\n    usage: ./LPO INPUT_FILE [-d|--debug] [-c|--cnf] [-o|--output = O
 die "I need a file!$usage" if @ARGV == 0;
 
 open(INPUT, "<", $aux = shift @ARGV) or die "Impossible to open \"$aux\"$usage";
+
 GetOptions("debug"    => \$d,
+           "cnf"      => \$cnf,
            "output=s" => \$file
 );
 
@@ -44,6 +47,7 @@ say @entries if $d;
 say "\nREADING FILE:\n" if $d;
 
 my %vars;           # Hash with the information of the variables
+my %preds;          # Hash with the predicatives variations
 my $claus;          # String with the clause
 my @conds;          # Array with the conditions for the last clause
 my $i;              # Actual line of the INPUT
@@ -150,7 +154,8 @@ while ($i = shift @entries)
                     $claus,   # String with the clause 
                     $1,       # Name of one of the variables
                     {%vars},  # Reference to the variable hash
-                    [@conds]  # Reference to the array of conditions
+                    [@conds], # Reference to the array of conditions
+                    {%preds}  # Reference to the predicatives hash 
                   );
             say "" if $d;       
         }
@@ -173,6 +178,8 @@ sub insert
     my $var    = shift;     # A variable in the clause
     my $vHash  = shift;     # A Hash reference with all the variables
     my $checks = shift;     # A Array reference with the conditions
+    # A Hash reference with all the predicatives so far
+    my $preds  = shift;     
     my $min    = $$vHash{$var}->[0]; # Least value of the $var domain
     my $max    = $$vHash{$var}->[1]; # Greater value of the $var domain
     my $aux;                # Auxiliar variable
@@ -202,7 +209,9 @@ sub insert
             {
                 print "to file -> " if $d;
                 $aux =~ s/\s*$/./; # The dot after the clause
-                say $aux; # Put the computed clause
+                # Put the computed clause
+                say $aux            unless $cnf;
+                cnf($aux,$preds)    if     $cnf
             }
         }   
     }
@@ -317,4 +326,15 @@ sub chk
             return $first != $second;
         }
     }
+}
+
+sub cnf
+{
+    my $clause = shift;
+    my $preds  = shift;
+    while($clause =~ s/([+-]?[a-z]+[(].*[)])//)
+    {
+        print "$1 ";
+    }
+    say ".";
 }
