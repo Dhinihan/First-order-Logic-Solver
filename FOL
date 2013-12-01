@@ -1,5 +1,8 @@
 #!/usr/bin/perl -w
 
+# Author: Vinícius Nascimento Silva
+# USP Nº: 7557626
+
 use warnings;
 use strict;
 use v5.10;
