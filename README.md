@@ -5,6 +5,7 @@ A program exercice for a logic class at the Instituto de Matemática
 e Estatística
 
 Author: Vinícius Nascimento Silva
+
 USP Nº: 7557626
 
 More information at https://github.com/Dhinihan/First-order-Logic-Solver
